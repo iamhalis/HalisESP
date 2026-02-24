@@ -70,9 +70,8 @@ pcall(function()
 
 	--// ===== SETTINGS =====
 	local HIGHLIGHT_COLOR = Color3.fromRGB(255, 80, 80)
-	local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
 	local MAX_DISTANCE = 3000
-	local UPDATE_RATE = 0.15
+	local UPDATE_RATE = 0.2 -- nhẹ hơn vì bỏ text
 	local TOGGLE_KEY = Enum.KeyCode.G
 
 	--// ===== STATE =====
@@ -91,11 +90,7 @@ pcall(function()
 	--// TOGGLE
 	local function setESPEnabled(state)
 		ESP_ENABLED = state
-
 		for _, data in pairs(ESPCache) do
-			if data.billboard then
-				data.billboard.Enabled = ESP_ENABLED
-			end
 			if data.highlight then
 				data.highlight.Enabled = ESP_ENABLED
 			end
@@ -138,25 +133,6 @@ pcall(function()
 			highlight.Enabled = ESP_ENABLED
 			highlight.Parent = holder
 			data.highlight = highlight
-
-			local billboard = Instance.new("BillboardGui")
-			billboard.Size = UDim2.new(0, 200, 0, 50)
-			billboard.AlwaysOnTop = true
-			billboard.StudsOffset = Vector3.new(0, 3, 0)
-			billboard.Adornee = hrp
-			billboard.Enabled = ESP_ENABLED
-			billboard.Parent = holder
-			data.billboard = billboard
-
-			local label = Instance.new("TextLabel")
-			label.Size = UDim2.new(1,0,1,0)
-			label.BackgroundTransparency = 1
-			label.TextColor3 = TEXT_COLOR
-			label.TextStrokeTransparency = 0
-			label.TextScaled = true
-			label.Font = Enum.Font.SourceSansBold
-			label.Parent = billboard
-			data.label = label
 		end
 
 		if player.Character then
@@ -187,9 +163,8 @@ pcall(function()
 	Players.PlayerAdded:Connect(createESP)
 	Players.PlayerRemoving:Connect(removeESP)
 
+	--// DISTANCE CULL ONLY (KHÔNG TEXT)
 	RunService.RenderStepped:Connect(function(dt)
-		if not ESP_ENABLED then return end
-
 		timeAccumulator += dt
 		if timeAccumulator < UPDATE_RATE then return end
 		timeAccumulator = 0
@@ -199,20 +174,13 @@ pcall(function()
 		local myHRP = myChar:FindFirstChild("HumanoidRootPart")
 		if not myHRP then return end
 
-		for player, data in pairs(ESPCache) do
+		for _, data in pairs(ESPCache) do
 			local hrp = data.hrp
-			local billboard = data.billboard
-			local label = data.label
+			local highlight = data.highlight
 
-			if hrp and hrp.Parent and billboard and label then
+			if hrp and hrp.Parent and highlight then
 				local dist = (hrp.Position - myHRP.Position).Magnitude
-
-				if dist > MAX_DISTANCE then
-					billboard.Enabled = false
-				else
-					billboard.Enabled = ESP_ENABLED
-					label.Text = player.Name .. " [" .. math.floor(dist) .. "m]"
-				end
+				highlight.Enabled = ESP_ENABLED and dist <= MAX_DISTANCE
 			end
 		end
 	end)
