@@ -6,6 +6,8 @@ pcall(function()
 	local RunService = game:GetService("RunService")
 	local UserInputService = game:GetService("UserInputService")
 	local TweenService = game:GetService("TweenService")
+	local Lighting = game:GetService("Lighting")
+	local Workspace = game:GetService("Workspace")
 
 	local LocalPlayer = Players.LocalPlayer
 
@@ -13,6 +15,55 @@ pcall(function()
 	repeat task.wait() until LocalPlayer
 	repeat task.wait() until LocalPlayer.Character
 	repeat task.wait() until LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+	--// ================= FPS BOOST =================
+	local function FPSBoost()
+		-- lighting
+		pcall(function()
+			Lighting.GlobalShadows = false
+			Lighting.FogEnd = 9e9
+			Lighting.Brightness = 1
+		end)
+
+		-- remove heavy effects
+		for _, v in pairs(Lighting:GetChildren()) do
+			if v:IsA("BloomEffect")
+			or v:IsA("BlurEffect")
+			or v:IsA("SunRaysEffect")
+			or v:IsA("ColorCorrectionEffect")
+			or v:IsA("DepthOfFieldEffect") then
+				v.Enabled = false
+			end
+		end
+
+		-- terrain optimization
+		pcall(function()
+			local terrain = Workspace:FindFirstChildOfClass("Terrain")
+			if terrain then
+				terrain.WaterWaveSize = 0
+				terrain.WaterWaveSpeed = 0
+				terrain.WaterReflectance = 0
+				terrain.WaterTransparency = 1
+			end
+		end)
+
+		-- part material simplification
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+			if obj:IsA("BasePart") then
+				obj.Material = Enum.Material.Plastic
+				obj.Reflectance = 0
+			elseif obj:IsA("Decal") or obj:IsA("Texture") then
+				obj.Transparency = 0.5
+			end
+		end
+
+		-- quality level
+		pcall(function()
+			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+		end)
+	end
+
+	FPSBoost()
 
 	--// ===== NOTIFICATION =====
 	local function showNotification()
@@ -71,7 +122,7 @@ pcall(function()
 	--// ===== SETTINGS =====
 	local HIGHLIGHT_COLOR = Color3.fromRGB(255, 80, 80)
 	local MAX_DISTANCE = 3000
-	local UPDATE_RATE = 0.2 -- nhẹ hơn vì bỏ text
+	local UPDATE_RATE = 0.2
 	local TOGGLE_KEY = Enum.KeyCode.G
 
 	--// ===== STATE =====
@@ -163,7 +214,6 @@ pcall(function()
 	Players.PlayerAdded:Connect(createESP)
 	Players.PlayerRemoving:Connect(removeESP)
 
-	--// DISTANCE CULL ONLY (KHÔNG TEXT)
 	RunService.RenderStepped:Connect(function(dt)
 		timeAccumulator += dt
 		if timeAccumulator < UPDATE_RATE then return end
