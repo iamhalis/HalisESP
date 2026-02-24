@@ -18,11 +18,28 @@ pcall(function()
 
 	--// ================= FPS BOOST =================
 	local function FPSBoost()
-		-- lighting
+		-- lighting basic
 		pcall(function()
 			Lighting.GlobalShadows = false
 			Lighting.FogEnd = 9e9
 			Lighting.Brightness = 1
+			Lighting.ClockTime = 14
+			Lighting.OutdoorAmbient = Color3.fromRGB(128,128,128)
+		end)
+
+		-- REMOVE SKY 🔥
+		pcall(function()
+			for _, v in ipairs(Lighting:GetChildren()) do
+				if v:IsA("Sky") then
+					v:Destroy()
+				end
+			end
+			Lighting.SkyboxBk = ""
+			Lighting.SkyboxDn = ""
+			Lighting.SkyboxFt = ""
+			Lighting.SkyboxLf = ""
+			Lighting.SkyboxRt = ""
+			Lighting.SkyboxUp = ""
 		end)
 
 		-- remove heavy effects
@@ -47,7 +64,7 @@ pcall(function()
 			end
 		end)
 
-		-- part material simplification
+		-- simplify materials
 		for _, obj in ipairs(Workspace:GetDescendants()) do
 			if obj:IsA("BasePart") then
 				obj.Material = Enum.Material.Plastic
@@ -57,7 +74,7 @@ pcall(function()
 			end
 		end
 
-		-- quality level
+		-- quality level lowest
 		pcall(function()
 			settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 		end)
