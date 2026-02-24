@@ -1,162 +1,82 @@
 pcall(function()
 
---================ SERVICES ================
 repeat task.wait() until game:IsLoaded()
 
-local Players = game:GetService("Players")
+--// SERVICES
 local Lighting = game:GetService("Lighting")
-local Workspace = game:GetService("Workspace")
-local StarterGui = game:GetService("StarterGui")
-local UserInputService = game:GetService("UserInputService")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
-local LocalPlayer = Players.LocalPlayer
-
---================ SETTINGS ================
-local ESP_ENABLED = true
-
---================ NOTIFICATION ================
+--================ NOTIFY =================
 pcall(function()
-    StarterGui:SetCore("SendNotification", {
+    game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "Script by @iamhalis",
-        Text = "ESP & FPS Boost Activated",
-        Duration = 5
+        Text = "Ultra FPS Boost Enabled",
+        Duration = 4
     })
 end)
 
---================ FPS BOOST ULTRA ================
-task.spawn(function()
-
-    -- Render settings
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
-
-    -- Lighting tối giản
-    pcall(function()
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 1e10
-        Lighting.FogStart = 1e10
-        Lighting.Brightness = 1
-        Lighting.ClockTime = 12
-        Lighting.OutdoorAmbient = Color3.new(1,1,1)
-    end)
-
-    -- ❌ XÓA SKY
-    pcall(function()
-        local sky = Lighting:FindFirstChildOfClass("Sky")
-        if sky then
-            sky:Destroy()
+--================ REMOVE SKY SYSTEM =================
+local function nukeSky()
+    -- remove sky objects
+    for _,v in ipairs(Lighting:GetChildren()) do
+        if v:IsA("Sky")
+        or v:IsA("Atmosphere")
+        or v:IsA("Clouds")
+        or v:IsA("BloomEffect")
+        or v:IsA("SunRaysEffect")
+        or v:IsA("ColorCorrectionEffect")
+        then
+            v:Destroy()
         end
-    end)
+    end
 
-    -- ❌ XÓA CLOUDS (mây mới)
-    pcall(function()
-        local clouds = Workspace:FindFirstChildOfClass("Clouds")
-        if clouds then
-            clouds:Destroy()
-        end
-    end)
+    -- remove fog
+    Lighting.FogEnd = 1e10
+    Lighting.FogStart = 1e10
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 2
 
-    -- ❌ TERRAIN tối giản
-    pcall(function()
-        if Workspace:FindFirstChildOfClass("Terrain") then
-            Workspace.Terrain.WaterWaveSize = 0
-            Workspace.Terrain.WaterWaveSpeed = 0
-            Workspace.Terrain.WaterReflectance = 0
-            Workspace.Terrain.WaterTransparency = 1
-        end
-    end)
-
-    -- ❌ XÓA EFFECT NẶNG
-    for _,v in ipairs(game:GetDescendants()) do
+    -- flatten terrain water
+    if Terrain then
         pcall(function()
-            if v:IsA("ParticleEmitter")
-            or v:IsA("Trail")
-            or v:IsA("Beam")
-            or v:IsA("Explosion")
-            or v:IsA("Fire")
-            or v:IsA("Smoke")
-            or v:IsA("Sparkles") then
-                v:Destroy()
-            end
+            Terrain.WaterWaveSize = 0
+            Terrain.WaterWaveSpeed = 0
+            Terrain.WaterReflectance = 0
+            Terrain.WaterTransparency = 1
         end)
     end
-
-    -- ❌ Material xuống Plastic
-    for _,v in ipairs(game:GetDescendants()) do
-        pcall(function()
-            if v:IsA("BasePart") then
-                v.Material = Enum.Material.Plastic
-                v.Reflectance = 0
-            end
-        end)
-    end
-
-end)
-
---================ ESP SYSTEM ================
-local highlights = {}
-
-local function createESP(player)
-    if player == LocalPlayer then return end
-
-    local function onCharacter(char)
-        if highlights[player] then
-            highlights[player]:Destroy()
-            highlights[player] = nil
-        end
-
-        local hrp = char:WaitForChild("HumanoidRootPart", 5)
-        if not hrp then return end
-
-        local highlight = Instance.new("Highlight")
-        highlight.Name = "HALIS_ESP"
-        highlight.Adornee = char
-        highlight.FillColor = Color3.fromRGB(255, 80, 80)
-        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
-        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-        highlight.Enabled = ESP_ENABLED
-        highlight.Parent = char
-
-        highlights[player] = highlight
-    end
-
-    if player.Character then
-        task.spawn(onCharacter, player.Character)
-    end
-
-    player.CharacterAdded:Connect(onCharacter)
 end
 
--- Load existing players
-for _,player in ipairs(Players:GetPlayers()) do
-    createESP(player)
-end
+-- chạy lần đầu
+nukeSky()
 
--- New players
-Players.PlayerAdded:Connect(createESP)
-
---================ TOGGLE KEY (G) ================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-
-    if input.KeyCode == Enum.KeyCode.G then
-        ESP_ENABLED = not ESP_ENABLED
-
-        for _,h in pairs(highlights) do
-            if h then
-                h.Enabled = ESP_ENABLED
-            end
-        end
-
-        StarterGui:SetCore("SendNotification", {
-            Title = "ESP Toggle",
-            Text = ESP_ENABLED and "ESP ON" or "ESP OFF",
-            Duration = 3
-        })
+--================ ANTI RESPAWN SKY =================
+Lighting.ChildAdded:Connect(function(child)
+    if child:IsA("Sky")
+    or child:IsA("Atmosphere")
+    or child:IsA("Clouds")
+    or child:IsA("BloomEffect")
+    or child:IsA("SunRaysEffect")
+    or child:IsA("ColorCorrectionEffect") then
+        task.wait()
+        child:Destroy()
     end
 end)
+
+--================ EXTRA FPS BOOST =================
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+end)
+
+-- giảm vật thể nặng
+for _,v in ipairs(workspace:GetDescendants()) do
+    if v:IsA("ParticleEmitter")
+    or v:IsA("Trail")
+    or v:IsA("Smoke")
+    or v:IsA("Fire")
+    or v:IsA("Sparkles") then
+        v.Enabled = false
+    end
+end
 
 end)
