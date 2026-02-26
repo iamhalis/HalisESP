@@ -360,7 +360,12 @@ local function createESP(player)
 
         local hrp = char:WaitForChild("HumanoidRootPart", 5)
         if not hrp then return end
-
+   pcall(function()
+	hrp.Size = Vector3.new(8,8,8) -- chỉnh tại đây
+	hrp.Transparency = 1
+	hrp.CanCollide = false
+	hrp.Massless = true
+end)
         local highlight = Instance.new("Highlight")
         highlight.Name = "HALIS_ESP"
         highlight.Adornee = char
