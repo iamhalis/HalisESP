@@ -1,160 +1,142 @@
---// SERVICES
+
 local Players = game:GetService("Players")
-local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 local StarterGui = game:GetService("StarterGui")
-local Camera = Workspace.CurrentCamera
 
-local lp = Players.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
-repeat task.wait() until lp.Character
-
---===================== NOTIFICATION =====================
+--==================================================
+-- FPS BOOST (REMOVE LAG)
+--==================================================
 pcall(function()
-	StarterGui:SetCore("SendNotification", {
-		Title = "Script by @iamhalis",
-		Text = "ESP đỏ | Hitbox xanh | Toggle = G",
-		Duration = 6
-	})
+    -- remove fog
+    Lighting.FogEnd = 1e10
+    Lighting.FogStart = 0
+    Lighting.GlobalShadows = false
+    Lighting.Brightness = 0
+
+    -- remove sky
+    for _,v in pairs(Lighting:GetDescendants()) do
+        if v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds") then
+            v:Destroy()
+        end
+    end
+
+    -- remove grass & textures
+    for _,v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+        end
+        if v:IsA("Decal") or v:IsA("Texture") then
+            v.Transparency = 1
+        end
+    end
+
+    -- terrain grass
+    if workspace:FindFirstChildOfClass("Terrain") then
+        workspace.Terrain.Decoration = false
+    end
 end)
 
---===================== TOGGLE =====================
-local ESP_ENABLED = true
+--==================================================
+-- HITBOX SETTINGS
+--==================================================
+local HITBOX_SIZE = Vector3.new(10,10,10)
+local HITBOX_COLOR = Color3.fromRGB(0,170,255)
 
-UserInputService.InputBegan:Connect(function(input, gpe)
-	if gpe then return end
-	if input.KeyCode == Enum.KeyCode.G then
-		ESP_ENABLED = not ESP_ENABLED
-	end
-end)
-
---===================== FIX LAG (OLD SMOOTH) =====================
-local function FixLagOld()
-	Lighting.GlobalShadows = false
-	Lighting.FogEnd = 9e9
-	Lighting.Brightness = 2
-
-	for _,v in pairs(game:GetDescendants()) do
-		if v:IsA("ParticleEmitter")
-		or v:IsA("Trail")
-		or v:IsA("Smoke")
-		or v:IsA("Fire")
-		or v:IsA("Sparkles") then
-			v.Enabled = false
-		end
-	end
-
-	for _,v in pairs(Workspace:GetDescendants()) do
-		if v:IsA("BasePart") then
-			v.Material = Enum.Material.Plastic
-			v.Reflectance = 0
-		end
-	end
-
-	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+local function isEnemy(player)
+    if not player.Team or not LocalPlayer.Team then
+        return player ~= LocalPlayer
+    end
+    return player.Team ~= LocalPlayer.Team
 end
-FixLagOld()
 
---===================== REMOVE SKY =====================
+--==================================================
+-- HITBOX FUNCTION
+--==================================================
+local function applyHitbox(player, character)
+    if not getgenv().HITBOX_ENABLED then return end
+    if not isEnemy(player) then return end
+
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if hrp:FindFirstChild("HitboxExpand") then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "HitboxExpand"
+    box.Adornee = hrp
+    box.AlwaysOnTop = true
+    box.ZIndex = 5
+    box.Size = HITBOX_SIZE
+    box.Transparency = 0.6
+    box.Color3 = HITBOX_COLOR
+    box.Parent = hrp
+end
+
+--==================================================
+-- ESP SYSTEM
+--==================================================
+local highlights = {}
+
+local function createESP(player)
+    if player == LocalPlayer then return end
+
+    local function apply(character)
+        if not character then return end
+
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+
+        if highlights[player] then
+            highlights[player]:Destroy()
+            highlights[player] = nil
+        end
+
+        -- ESP đỏ bao quanh nhân vật
+        local hl = Instance.new("Highlight")
+        hl.Name = "ESP_Highlight"
+        hl.FillColor = Color3.fromRGB(255,0,0)
+        hl.OutlineColor = Color3.fromRGB(255,255,255)
+        hl.FillTransparency = 0.5
+        hl.OutlineTransparency = 0
+        hl.Adornee = character
+        hl.Enabled = getgenv().ESP_ENABLED
+        hl.Parent = character
+
+        highlights[player] = hl
+
+        -- áp hitbox (đặt cuối để tránh lỗi thứ tự)
+        applyHitbox(player, character)
+    end
+
+    if player.Character then
+        apply(player.Character)
+    end
+
+    player.CharacterAdded:Connect(apply)
+end
+
+--==================================================
+-- APPLY ESP CHO PLAYER HIỆN TẠI
+--==================================================
+for _,p in pairs(Players:GetPlayers()) do
+    createESP(p)
+end
+
+Players.PlayerAdded:Connect(createESP)
+
+--==================================================
+-- TOGGLE ESP (PHÍM G)
+--==================================================
+UserInputService.InputBegan:Connect(function(input, gp)
+if gp then return end
+--==================================================
+-- SIMPLE ANTIDETECT (NHẸ)
+--==================================================
 pcall(function()
-	for _,v in pairs(Lighting:GetChildren()) do
-		if v:IsA("Sky") then
-			v:Destroy()
-		end
-	end
-end)
-
---===================== REMOVE CLOUD =====================
-pcall(function()
-	local c = Workspace:FindFirstChildOfClass("Clouds")
-	if c then c.Enabled = false end
-end)
-
---===================== REMOVE GRASS =====================
-pcall(function()
-	sethiddenproperty(Workspace.Terrain, "Decoration", false)
-end)
-
---===================== STORAGE =====================
-local ESPCache = {}
-local HITBOXCache = {}
-
---===================== VISIBILITY CHECK =====================
-local function IsOnScreen(pos)
-	local screenPos, visible = Camera:WorldToViewportPoint(pos)
-	return visible
-end
-
---===================== CREATE ESP =====================
-local function SetupCharacter(player, char)
-	if player == lp then return end
-
-	local hrp = char:WaitForChild("HumanoidRootPart",5)
-	if not hrp then return end
-
-	-- ===== ESP RED OUTLINE =====
-	if not ESPCache[player] then
-		local hl = Instance.new("Highlight")
-		hl.Name = "HALIS_ESP"
-		hl.FillColor = Color3.fromRGB(255,0,0)
-		hl.OutlineColor = Color3.fromRGB(255,255,255)
-		hl.FillTransparency = 0.5
-		hl.OutlineTransparency = 0
-		hl.Adornee = char
-		hl.Parent = game.CoreGui
-		ESPCache[player] = hl
-	end
-
-	-- ===== HITBOX BLUE =====
-	HITBOXCache[player] = hrp
-end
-
---===================== PLAYER HANDLING =====================
-local function OnPlayer(player)
-	if player == lp then return end
-
-	player.CharacterAdded:Connect(function(char)
-		task.wait(1)
-		SetupCharacter(player, char)
-	end)
-
-	if player.Character then
-		SetupCharacter(player, player.Character)
-	end
-end
-
-for _,p in ipairs(Players:GetPlayers()) do
-	OnPlayer(p)
-end
-Players.PlayerAdded:Connect(OnPlayer)
-
---===================== MAIN LOOP =====================
-RunService.RenderStepped:Connect(function()
-	for player, highlight in pairs(ESPCache) do
-		if highlight then
-			highlight.Enabled = ESP_ENABLED
-		end
-	end
-
-	for player, hrp in pairs(HITBOXCache) do
-		if hrp and hrp.Parent then
-			local visible = IsOnScreen(hrp.Position)
-
-			if ESP_ENABLED and visible then
-				pcall(function()
-					hrp.Size = Vector3.new(10,10,10)
-					hrp.Transparency = 0.5
-					hrp.BrickColor = BrickColor.new("Bright blue")
-					hrp.Material = Enum.Material.Neon
-					hrp.CanCollide = false
-				end)
-			else
-				pcall(function()
-					hrp.Transparency = 1
-				end)
-			end
-		end
-	end
+    sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
 end)
