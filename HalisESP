@@ -5,19 +5,22 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local StarterGui = game:GetService("StarterGui")
+local Camera = Workspace.CurrentCamera
 
 local lp = Players.LocalPlayer
+
+repeat task.wait() until lp.Character
 
 --===================== NOTIFICATION =====================
 pcall(function()
 	StarterGui:SetCore("SendNotification", {
 		Title = "Script by @iamhalis",
-		Text = "ESP & FPS Boost Activated | Toggle = G",
+		Text = "ESP đỏ | Hitbox xanh | Toggle = G",
 		Duration = 6
 	})
 end)
 
---===================== TOGGLE STATE =====================
+--===================== TOGGLE =====================
 local ESP_ENABLED = true
 
 UserInputService.InputBegan:Connect(function(input, gpe)
@@ -63,14 +66,10 @@ pcall(function()
 	end
 end)
 
---===================== REMOVE FOG =====================
-Lighting.FogEnd = 9e9
-
 --===================== REMOVE CLOUD =====================
 pcall(function()
-	if Workspace:FindFirstChildOfClass("Clouds") then
-		Workspace:FindFirstChildOfClass("Clouds").Enabled = false
-	end
+	local c = Workspace:FindFirstChildOfClass("Clouds")
+	if c then c.Enabled = false end
 end)
 
 --===================== REMOVE GRASS =====================
@@ -78,52 +77,84 @@ pcall(function()
 	sethiddenproperty(Workspace.Terrain, "Decoration", false)
 end)
 
---===================== HITBOX =====================
-local HITBOX_SIZE = Vector3.new(10,10,10)
-local HITBOX_TRANSPARENCY = 0.5
+--===================== STORAGE =====================
+local ESPCache = {}
+local HITBOXCache = {}
 
-local function ExpandHitbox(player)
+--===================== VISIBILITY CHECK =====================
+local function IsOnScreen(pos)
+	local screenPos, visible = Camera:WorldToViewportPoint(pos)
+	return visible
+end
+
+--===================== CREATE ESP =====================
+local function SetupCharacter(player, char)
 	if player == lp then return end
-	if not player.Character then return end
 
-	local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+	local hrp = char:WaitForChild("HumanoidRootPart",5)
 	if not hrp then return end
 
-	pcall(function()
-		hrp.Size = HITBOX_SIZE
-		hrp.Transparency = HITBOX_TRANSPARENCY
-		hrp.BrickColor = BrickColor.new("Really red")
-		hrp.Material = Enum.Material.Neon
-		hrp.CanCollide = false
-	end)
+	-- ===== ESP RED OUTLINE =====
+	if not ESPCache[player] then
+		local hl = Instance.new("Highlight")
+		hl.Name = "HALIS_ESP"
+		hl.FillColor = Color3.fromRGB(255,0,0)
+		hl.OutlineColor = Color3.fromRGB(255,255,255)
+		hl.FillTransparency = 0.5
+		hl.OutlineTransparency = 0
+		hl.Adornee = char
+		hl.Parent = game.CoreGui
+		ESPCache[player] = hl
+	end
+
+	-- ===== HITBOX BLUE =====
+	HITBOXCache[player] = hrp
 end
 
---===================== ESP =====================
-local ESP_FOLDER = Instance.new("Folder", game.CoreGui)
-ESP_FOLDER.Name = "HALIS_ESP"
-
-local function CreateESP(player)
+--===================== PLAYER HANDLING =====================
+local function OnPlayer(player)
 	if player == lp then return end
-	if not player.Character then return end
-	if player.Character:FindFirstChild("HALIS_HIGHLIGHT") then return end
 
-	local highlight = Instance.new("Highlight")
-	highlight.Name = "HALIS_HIGHLIGHT"
-	highlight.FillColor = Color3.fromRGB(255,0,0)
-	highlight.OutlineColor = Color3.fromRGB(255,255,255)
-	highlight.FillTransparency = 0.5
-	highlight.OutlineTransparency = 0
-	highlight.Adornee = player.Character
-	highlight.Parent = ESP_FOLDER
+	player.CharacterAdded:Connect(function(char)
+		task.wait(1)
+		SetupCharacter(player, char)
+	end)
+
+	if player.Character then
+		SetupCharacter(player, player.Character)
+	end
 end
+
+for _,p in ipairs(Players:GetPlayers()) do
+	OnPlayer(p)
+end
+Players.PlayerAdded:Connect(OnPlayer)
 
 --===================== MAIN LOOP =====================
 RunService.RenderStepped:Connect(function()
-	for _,plr in pairs(Players:GetPlayers()) do
-		ExpandHitbox(plr)
+	for player, highlight in pairs(ESPCache) do
+		if highlight then
+			highlight.Enabled = ESP_ENABLED
+		end
+	end
 
-		if ESP_ENABLED then
-			CreateESP(plr)
+	for player, hrp in pairs(HITBOXCache) do
+		if hrp and hrp.Parent then
+			local visible = IsOnScreen(hrp.Position)
+
+			if ESP_ENABLED and visible then
+				pcall(function()
+					hrp.Size = Vector3.new(10,10,10)
+					hrp.Transparency = 0.5
+					hrp.BrickColor = BrickColor.new("Bright blue")
+					hrp.Material = Enum.Material.Neon
+					hrp.CanCollide = false
+				end)
+			else
+				pcall(function()
+					hrp.Transparency = 1
+				end)
+			end
 		end
 	end
 end)
