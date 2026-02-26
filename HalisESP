@@ -360,12 +360,7 @@ local function createESP(player)
 
         local hrp = char:WaitForChild("HumanoidRootPart", 5)
         if not hrp then return end
-   pcall(function()
-	hrp.Size = Vector3.new(8,8,8) -- chỉnh tại đây
-	hrp.Transparency = 1
-	hrp.CanCollide = false
-	hrp.Massless = true
-end)
+
         local highlight = Instance.new("Highlight")
         highlight.Name = "HALIS_ESP"
         highlight.Adornee = char
@@ -395,92 +390,27 @@ end
 -- New players
 Players.PlayerAdded:Connect(createESP)
 
---================ HITBOX EXPAND (VISIBLE ONLY) ================
+pcall(function()
+	local newSize = Vector3.new(5,5,5)
 
-local HITBOX_SIZE = Vector3.new(6,6,6) -- chỉnh to nhỏ tại đây
-local HITBOX_COLOR = Color3.fromRGB(0, 255, 120)
-local HITBOX_TRANSPARENCY = 0.6
-
-local camera = Workspace.CurrentCamera
-local hitboxFolder = Instance.new("Folder")
-hitboxFolder.Name = "HalisHitbox"
-hitboxFolder.Parent = game.CoreGui
-
-local hitboxCache = {}
-
-local function isVisible(part)
-	if not part then return false end
-
-	local origin = camera.CFrame.Position
-	local direction = (part.Position - origin)
-
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Blacklist
-	params.FilterDescendantsInstances = {LocalPlayer.Character}
-
-	local result = Workspace:Raycast(origin, direction, params)
-
-	if result and result.Instance then
-		return result.Instance:IsDescendantOf(part.Parent)
+	if hrp.Size ~= newSize then
+		hrp.Size = newSize
 	end
 
-	return true
-end
-
-local function createHitbox(player)
-	if player == LocalPlayer then return end
-	if hitboxCache[player] then return end
-
-	local function apply(char)
-		local hrp = char:WaitForChild("HumanoidRootPart", 5)
-		if not hrp then return end
-
-		if hitboxCache[player] then
-			hitboxCache[player]:Destroy()
-		end
-
-		local box = Instance.new("BoxHandleAdornment")
-		box.Name = "HALIS_HITBOX"
-		box.Adornee = hrp
-		box.AlwaysOnTop = false -- ❗ không xuyên tường
-		box.ZIndex = 0
-		box.Size = HITBOX_SIZE
-		box.Color3 = HITBOX_COLOR
-		box.Transparency = HITBOX_TRANSPARENCY
-		box.Parent = hitboxFolder
-
-		hitboxCache[player] = box
-	end
-
-	if player.Character then
-		task.spawn(apply, player.Character)
-	end
-
-	player.CharacterAdded:Connect(apply)
-end
-
--- load players
-for _,plr in ipairs(Players:GetPlayers()) do
-	createHitbox(plr)
-end
-
-Players.PlayerAdded:Connect(createHitbox)
-Players.PlayerRemoving:Connect(function(plr)
-	if hitboxCache[plr] then
-		hitboxCache[plr]:Destroy()
-		hitboxCache[plr] = nil
-	end
+	hrp.Transparency = 1
+	hrp.CanCollide = false
+	hrp.Massless = true
 end)
 
--- update visibility (không nhìn xuyên tường)
-RunService.RenderStepped:Connect(function()
-	for player, box in pairs(hitboxCache) do
-		local char = player.Character
-		if char and char:FindFirstChild("HumanoidRootPart") then
-			box.Visible = isVisible(char.HumanoidRootPart)
-		end
-	end
-end)
+-- 🔵 visual box
+local hitboxVis = Instance.new("BoxHandleAdornment")
+hitboxVis.Name = "HALIS_REAL_HITBOX"
+hitboxVis.Adornee = hrp
+hitboxVis.AlwaysOnTop = false
+hitboxVis.Size = Vector3.new(5,5,5) -- ⚠️ QUAN TRỌNG
+hitboxVis.Color3 = Color3.fromRGB(0,170,255)
+hitboxVis.Transparency = 0.5
+hitboxVis.Parent = hrp
 --================ TOGGLE KEY (G) ================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
