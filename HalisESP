@@ -4,40 +4,35 @@ local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
 
 local lp = Players.LocalPlayer
 
---// ===================== GUI =====================
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "FPS_MENU"
+--===================== NOTIFICATION =====================
+pcall(function()
+	StarterGui:SetCore("SendNotification", {
+		Title = "Script by @iamhalis",
+		Text = "ESP & FPS Boost Activated | Toggle = G",
+		Duration = 6
+	})
+end)
 
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0,200,0,160)
-Frame.Position = UDim2.new(0,20,0,200)
-Frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Frame.Visible = true
-Frame.Active = true
-Frame.Draggable = true
+--===================== TOGGLE STATE =====================
+local ESP_ENABLED = true
 
-local UIListLayout = Instance.new("UIListLayout", Frame)
-UIListLayout.Padding = UDim.new(0,5)
-
---// Toggle bằng phím G
 UserInputService.InputBegan:Connect(function(input, gpe)
 	if gpe then return end
 	if input.KeyCode == Enum.KeyCode.G then
-		Frame.Visible = not Frame.Visible
+		ESP_ENABLED = not ESP_ENABLED
 	end
 end)
 
---// ===================== FIX LAG (BẢN CŨ MƯỢT) =====================
+--===================== FIX LAG (OLD SMOOTH) =====================
 local function FixLagOld()
-	-- lighting nhẹ
 	Lighting.GlobalShadows = false
 	Lighting.FogEnd = 9e9
 	Lighting.Brightness = 2
 
-	-- remove effects
 	for _,v in pairs(game:GetDescendants()) do
 		if v:IsA("ParticleEmitter")
 		or v:IsA("Trail")
@@ -48,7 +43,6 @@ local function FixLagOld()
 		end
 	end
 
-	-- material low
 	for _,v in pairs(Workspace:GetDescendants()) do
 		if v:IsA("BasePart") then
 			v.Material = Enum.Material.Plastic
@@ -58,30 +52,33 @@ local function FixLagOld()
 
 	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 end
-
 FixLagOld()
 
---// ===================== REMOVE SKY =====================
-local function RemoveSky()
+--===================== REMOVE SKY =====================
+pcall(function()
 	for _,v in pairs(Lighting:GetChildren()) do
 		if v:IsA("Sky") then
 			v:Destroy()
 		end
 	end
-end
-RemoveSky()
+end)
 
---// ===================== REMOVE GRASS =====================
+--===================== REMOVE FOG =====================
+Lighting.FogEnd = 9e9
+
+--===================== REMOVE CLOUD =====================
+pcall(function()
+	if Workspace:FindFirstChildOfClass("Clouds") then
+		Workspace:FindFirstChildOfClass("Clouds").Enabled = false
+	end
+end)
+
+--===================== REMOVE GRASS =====================
 pcall(function()
 	sethiddenproperty(Workspace.Terrain, "Decoration", false)
 end)
 
---// ===================== REMOVE CLOUD =====================
-pcall(function()
-	Workspace.Clouds.Enabled = false
-end)
-
---// ===================== HITBOX =====================
+--===================== HITBOX =====================
 local HITBOX_SIZE = Vector3.new(10,10,10)
 local HITBOX_TRANSPARENCY = 0.5
 
@@ -101,16 +98,32 @@ local function ExpandHitbox(player)
 	end)
 end
 
+--===================== ESP =====================
+local ESP_FOLDER = Instance.new("Folder", game.CoreGui)
+ESP_FOLDER.Name = "HALIS_ESP"
+
+local function CreateESP(player)
+	if player == lp then return end
+	if not player.Character then return end
+	if player.Character:FindFirstChild("HALIS_HIGHLIGHT") then return end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "HALIS_HIGHLIGHT"
+	highlight.FillColor = Color3.fromRGB(255,0,0)
+	highlight.OutlineColor = Color3.fromRGB(255,255,255)
+	highlight.FillTransparency = 0.5
+	highlight.OutlineTransparency = 0
+	highlight.Adornee = player.Character
+	highlight.Parent = ESP_FOLDER
+end
+
+--===================== MAIN LOOP =====================
 RunService.RenderStepped:Connect(function()
 	for _,plr in pairs(Players:GetPlayers()) do
 		ExpandHitbox(plr)
+
+		if ESP_ENABLED then
+			CreateESP(plr)
+		end
 	end
 end)
-
---// ===================== LABEL =====================
-local title = Instance.new("TextLabel", Frame)
-title.Size = UDim2.new(1,0,0,30)
-title.BackgroundTransparency = 1
-title.Text = "FPS BOOST MENU"
-title.TextColor3 = Color3.new(1,1,1)
-title.TextScaled = true
